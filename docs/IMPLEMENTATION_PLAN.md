@@ -37,7 +37,13 @@ Deferred by owner: resource guardrails (cgroup caps, single workload slot,
 benchmark admission) are suspended; `PROJECT5K_CONTAIN=1` re-enables the launcher
 limits. Reinstate before any large or unattended load.
 
-Pending: build reproducibility check; world
-fixtures and baseline/noise harness implementation (needs Node.js approval);
+World fixtures and the connected-client baseline harness are implemented. The
+first interleaved idle/crowd50 noise calibration completed (5 valid repetitions
+per scenario, 60 s warmup / 120 s measurement); see
+[NOISE_CALIBRATION.md](NOISE_CALIBRATION.md) for parameters, results and proposed
+noise thresholds, and `harness/calibrate.py` for execution and re-analysis.
+
+Pending: build reproducibility check; confirm the proposed longer calibration
+durations and repeat noise measurements on other days/times;
 first JMH run and analysis.
 These are pending, not completed security or reproducibility guarantees.

@@ -41,6 +41,10 @@ that later A/B runs reuse unchanged. Implements docs/BENCHMARK_PROTOCOL.md.
 
 ## Noise calibration (before any optimization)
 
+- `harness/calibrate.py run` interleaves five idle/crowd50 repetitions with
+  60 s warmup and 120 s measurement; `analyze RUN_DIR...` re-reads existing data.
+  Raw results stay in `.local/calibration/`. See [NOISE_CALIBRATION.md](NOISE_CALIBRATION.md)
+  for the method, results, invalidation rules and proposed comparison thresholds.
 - Idle-server and 50-bot runs, at least 5 repetitions each, on different days
   and times of day. Report coefficient of variation per metric; set the
   "beyond noise" threshold and warmup/measurement durations from these numbers.

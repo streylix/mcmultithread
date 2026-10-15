@@ -158,7 +158,7 @@ def run(args):
     meta = {"label": args.label, "jar": Path(args.jar).name, "jar_sha256": sha256(args.jar),
             "world": Path(args.world).name, "world_sha256": sha256(args.world),
             "bots": args.bots, "seed": args.seed, "warmup_s": args.warmup, "measure_s": args.duration,
-            "mobs": args.mobs, "cameras": cameras, "center_x": args.center_x, "center_z": args.center_z, "jvm_args": JVM_ARGS, "view_distance": args.view_distance}
+            "mobs": args.mobs, "spread": args.spread, "cameras": cameras, "center_x": args.center_x, "center_z": args.center_z, "jvm_args": JVM_ARGS, "view_distance": args.view_distance}
     host = subprocess.Popen([sys.executable, "-I", str(ROOT / "scripts" / "pressure-monitor.py"), "--interval", "1"],
                             stdout=(rundir / "host.csv").open("w"), stderr=subprocess.DEVNULL)
     srv = Server(rundir / "server", Path(args.jar), Path(args.world), [TELEMETRY_JAR], args.view_distance)
@@ -179,9 +179,11 @@ def run(args):
             x = args.center_x + rng.randint(-args.spread, args.spread)
             z = args.center_z + rng.randint(-args.spread, args.spread)
             srv.cmd(f"summon {rng.choice(['cow', 'pig', 'sheep', 'chicken'])} {x} 1 {z}")
-        swarm = start_node("swarm.js", ["127.0.0.1", PORT, args.bots, args.seed, rundir / "actions.jsonl", "b", args.spread,
-                                         0, args.center_x, args.center_z],
-                           rundir / "swarm.log")
+        (rundir / "actions.jsonl").touch()
+        if args.bots:
+            swarm = start_node("swarm.js", ["127.0.0.1", PORT, args.bots, args.seed, rundir / "actions.jsonl", "b", args.spread,
+                                             0, args.center_x, args.center_z],
+                               rundir / "swarm.log")
         joined, deadline = set(), time.time() + 60 + args.bots * 0.5
         while len(joined) < args.bots and time.time() < deadline:
             time.sleep(1)
@@ -235,7 +237,10 @@ def pct(values, p):
 
 def summarize(rundir, meta):
     """Aggregate tick timings and bot actions inside the measurement window."""
-    regions = list(csv.DictReader((rundir / "regions.csv").open())) if (rundir / "regions.csv").exists() else []
+    regions = []
+    if (rundir / "regions.csv").exists():
+        with (rundir / "regions.csv").open() as stream:
+            regions = list(csv.DictReader(stream))
     # Map nanoTime to wall clock from the per-second anchors.
     anchors = sorted({(int(r["nano"]), int(r["wall_ms"])) for r in regions})
     def wall(ns):
@@ -246,14 +251,15 @@ def summarize(rundir, meta):
     lo, hi = meta.get("measure_start_wall_ms"), meta.get("measure_end_wall_ms")
     ticks_ms, global_ms, per_region = [], [], {}
     if (rundir / "ticks.csv").exists():
-        for t in csv.DictReader((rundir / "ticks.csv").open()):
-            w = wall(int(t["tick_start_ns"]))
-            if w is None or lo is None or not (lo <= w <= hi):
-                continue
-            ms = (int(t["tick_end_ns"]) - int(t["tick_start_ns"])) / 1e6
-            (global_ms if t["region"] == "-1" else ticks_ms).append(ms)
-            per_region.setdefault(t["region"], 0)
-            per_region[t["region"]] += 1
+        with (rundir / "ticks.csv").open() as stream:
+            for t in csv.DictReader(stream):
+                w = wall(int(t["tick_start_ns"]))
+                if w is None or lo is None or not (lo <= w <= hi):
+                    continue
+                ms = (int(t["tick_end_ns"]) - int(t["tick_start_ns"])) / 1e6
+                (global_ms if t["region"] == "-1" else ticks_ms).append(ms)
+                per_region.setdefault(t["region"], 0)
+                per_region[t["region"]] += 1
     seconds = (hi - lo) / 1000 if lo and hi else None
     region_ticks = [n for r, n in per_region.items() if r != "-1"]
     actions = {}
