@@ -140,8 +140,8 @@ def prepare_world(args):
 
 # --- run ------------------------------------------------------------------------------
 
-def start_node(script, args_, log):
-    return subprocess.Popen([str(NODE), script, *map(str, args_)], cwd=BOTS,
+def start_node(script, args_, log, env=None):
+    return subprocess.Popen([str(NODE), script, *map(str, args_)], cwd=BOTS, env={**os.environ, **(env or {})},
                             stdout=log.open("w"), stderr=subprocess.STDOUT)
 
 
@@ -164,7 +164,8 @@ def run(args):
         meta["server_ready_wall_ms"] = int(time.time() * 1000)
         for i, cam in enumerate(cameras):
             name = f"cam{i}"
-            rec = start_node("recorder.js", ["127.0.0.1", PORT, name, rundir / "recordings" / name], rundir / f"{name}.log")
+            rec = start_node("recorder.js", ["127.0.0.1", PORT, name, rundir / "recordings" / name], rundir / f"{name}.log",
+                             {"MC_VERSION": args.mc_version})
             recorders.append((name, rec))
             wait_for_log(rundir / f"{name}.log", '"event":"spawn"', 120)
             srv.cmd(f"gamemode spectator {name}")
@@ -292,6 +293,7 @@ def main():
     r.add_argument("--duration", type=int, default=120)
     r.add_argument("--view-distance", type=int, default=10)
     r.add_argument("--cameras", help="JSON list of {x,y,z,yaw,pitch}")
+    r.add_argument("--mc-version", default="26.1.2", help="written into recording metadata")
     a = ap.parse_args()
     prepare_world(a) if a.command == "prepare-world" else run(a)
 

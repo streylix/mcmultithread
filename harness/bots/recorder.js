@@ -8,7 +8,10 @@
 // Entry layout (big-endian): int32 ms since start, int32 length, packet id + payload.
 import fs from 'node:fs'
 import path from 'node:path'
+import { createRequire } from 'node:module'
 import mineflayer from 'mineflayer'
+
+const mcData = createRequire(import.meta.url)('minecraft-data')
 
 const [host = '127.0.0.1', port = '25599', name = 'rec0', outDir = '.'] = process.argv.slice(2)
 fs.mkdirSync(outDir, { recursive: true })
@@ -43,8 +46,8 @@ client.on('packet', (data, meta, buffer, fullBuffer) => {
 })
 
 bot.once('login', () => {
-  protocol = client.protocolVersion
   version = bot.version
+  protocol = mcData(bot.version).version.version
   console.log(JSON.stringify({ event: 'login', protocol, version, wall_ms: startWall }))
 })
 bot.once('spawn', () => console.log(JSON.stringify({ event: 'spawn', packets })))

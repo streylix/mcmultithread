@@ -75,10 +75,37 @@ Why packet capture rather than re-executing the actions on a server: a re-run
 would diverge (mob AI, RNG, tick timing, region scheduling), so it would not show
 what actually happened. A packet capture is exact.
 
+## Implemented (2026-10-15)
+
+- `harness/world/build_city.py`: deterministic `city-1000` (seed 5000) built on the
+  vanilla 26.1.2 jar over RCON; `layout.json` lists every building, park, redstone
+  clock and hopper loop. `harness/world/render_map.py` draws a top-down map from the
+  saved region files.
+- `harness/run.py prepare-world`: Chunky pregeneration (radius 640) on the Folia jar,
+  then a `.tar.gz` archive plus manifest with SHA-256s.
+- `harness/telemetry`: TickTelemetry plugin (build with `build.sh SERVER_DIR`).
+  Copies every completed region tick out of Folia's own 5 s tick window once per
+  second on a background thread: `ticks.csv` (scheduled/start/end ns, CPU ns) and
+  `regions.csv` (per-second region centre, chunks, players, entities, wall-clock anchor).
+- `harness/bots/recorder.js`: camera recorder, ReplayMod `.mcpr` (format 14).
+  `harness/bots/swarm.js`: seeded bots, JSONL action log with latencies.
+- `harness/run.py run`: restore world, start server, cameras (`harness/cameras/*.json`),
+  mobs, swarm, warmup, measure, collect, `summary.json`.
+- `harness/video/overlay.py`: burns per-tick metrics for the region nearest the camera
+  into a ReplayMod render (top-left, colour by tick time: green < 40 ms, yellow < 50,
+  red over budget). Pass the replay timestamp the render starts at.
+
+First smoke run (10 bots, 50 animals, 1 camera, 40 s measured; not a calibrated
+baseline): 20.0 TPS, one region, median region tick 8.5 ms, p99 12.8 ms. All bots'
+view areas overlapped, so Folia merged the whole city into a single region.
+
+Known bot-script gaps: naive steering times out at walls; mobs too sparse for attacks;
+some block placements refused. Fix before noise calibration.
+
 ## Open items
 
-- Recorder implementation: Mineflayer/node-minecraft-protocol raw packet hook, or
-  MCProtocolLib; verify the `.mcpr` output opens in ReplayMod for the pinned MC version.
+- Verify a recorder `.mcpr` opens in ReplayMod 26.1 (Fabric) — owner check.
+
 - ReplayMod: available for 26.1 on Fabric (owner-confirmed).
 - Region tick telemetry source: Folia's `/tps` and region profiler, or JFR events.
 - Input latency measurement method (bot-side action→ack round trip).
