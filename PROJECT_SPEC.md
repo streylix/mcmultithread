@@ -6,6 +6,14 @@
 
 Create an open-source, reproducibly benchmarked server architecture that improves on unmodified Folia for dense-player simulation. Prioritize **vanilla gameplay semantics** (movement, combat, redstone/block updates, inventories, persistence, tick ordering where relevant) and compatibility with unmodified Java Edition clients. **Plugin compatibility is intentionally minimal**; do not promise Paper/Bukkit plugin compatibility. Deviations from vanilla behavior must be explicit, tested, and documented. No shortcuts such as silently skipping critical game simulation to inflate TPS.
 
+All changes are server-side; unmodified clients connect without mods. Deviations are classified in three tiers:
+
+- **Tier 1 — presentation only:** how often and how far the server sends updates to each client (e.g. entity tracking range, update rate for distant entities). The authoritative simulation is unchanged; only what clients see differs. Allowed by default as documented configuration.
+- **Tier 2 — minor semantic changes:** e.g. a pathfinding result applied one tick later, or a different deterministic order for simultaneous actions. Allowed when tested, documented, and individually switchable per test.
+- **Tier 3 — simulation shortcuts:** e.g. skipping or reducing mob AI, redstone, or distant-chunk ticking. Clearly labelled experiments only; never counted toward capacity targets.
+
+Every capacity or performance claim is reported twice: with vanilla-equivalent settings, and with the enabled Tier 1/2 deviations listed. A claim never omits which deviations it relies on.
+
 Success is not merely a high connection count: players must perform scripted movement, interaction, building, entity combat, and network traffic in one authoritative world. Maintain separate *dense city* and *distributed world* benchmark scenarios. A densely packed single-chunk crowd is an optional stretch test, not the initial acceptance target.
 
 ## 2. Evidence-gated architecture roadmap
