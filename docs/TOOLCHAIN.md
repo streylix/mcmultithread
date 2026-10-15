@@ -35,6 +35,13 @@ system-wide. Re-verify checksums when re-provisioning.
   verify the downloaded zip under `.local/gradle-home/wrapper/dists` after first use.
 - `GRADLE_USER_HOME=.local/gradle-home`, `--no-daemon`, `--max-workers=2`.
 
+## Test plugins (local only, never committed)
+
+- Chunky 1.5.3 (Modrinth `MdY6JATr`, `folia-supported: true`, MC 26.1.2–26.3),
+  sha512 verified against Modrinth; SHA-256 `530d2c7430a96a39957391b7088be144daa3108f7665896d1c23aa8dd4af32f3`.
+  Location: `.local/plugins/`. Used only to pregenerate fixture worlds, never during
+  measured runs.
+
 ## Build artifacts
 
 First baseline build 2026-10-15: `applyAllPatches` then
