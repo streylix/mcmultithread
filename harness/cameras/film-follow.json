@@ -1,0 +1,12 @@
+{
+ "segments": [
+  {"mode": "path", "t0": 0, "t1": 8, "keyframes": [
+   {"t": 0, "x": -40, "y": 50, "z": -40, "yaw": -45, "pitch": 35},
+   {"t": 8, "x": 16, "y": 45, "z": -50, "yaw": 0, "pitch": 40}]},
+  {"mode": "follow", "t0": 8, "t1": 24, "target": "b3", "distance": 6, "height": 3},
+  {"mode": "follow", "t0": 24, "t1": 40, "target": "b11", "distance": 6, "height": 3},
+  {"mode": "path", "t0": 40, "t1": 48, "keyframes": [
+   {"t": 40, "x": 16, "y": 50, "z": 16, "yaw": 225, "pitch": 60},
+   {"t": 48, "x": 16, "y": 80, "z": 16, "yaw": 225, "pitch": 89}]}
+ ]
+}

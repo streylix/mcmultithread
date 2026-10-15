@@ -9,7 +9,8 @@ path and ffmpeg records its screen. Then the metrics overlay is burned in.
 Usage:
   python3 harness/client/film.py RUN_DIR --camera cam0 --path harness/cameras/film-center.json \
       [--from-ms 20000] [--name center]
-Writes videos/<run>-<name>.mp4 (raw) and videos/<run>-<name>-overlay.mp4 in the project.
+Writes videos/packet-replay_<run>-<name>.mp4 (raw) and ...-overlay.mp4 in the project.
+The prefix marks footage recreated from a real run's recorded packets.
 The camera must stay inside the area the recorder received (its view distance).
 """
 import argparse
@@ -96,7 +97,7 @@ def film(run, camera, path_file, from_ms, name):
     game_dir.mkdir(parents=True)
     (game_dir / "options.txt").write_text("".join(f"{k}:{v}\n" for k, v in OPTIONS.items()))
     VIDEOS.mkdir(exist_ok=True)
-    raw_video = VIDEOS / f"{run.name}-{name}.mp4"
+    raw_video = VIDEOS / f"packet-replay_{run.name}-{name}.mp4"
     env = {**os.environ, "DISPLAY": DISPLAY}
     procs = []
     try:
@@ -133,10 +134,11 @@ def film(run, camera, path_file, from_ms, name):
                     p.kill()
         shutil.rmtree(game_dir / "natives", ignore_errors=True)
     replay_start = ready["play_start_ms"] + ready["from_ms"]
-    overlay_video = VIDEOS / f"{run.name}-{name}-overlay.mp4"
+    overlay_video = VIDEOS / f"packet-replay_{run.name}-{name}-overlay.mp4"
     subprocess.run([sys.executable, "-I", str(ROOT / "harness" / "video" / "overlay.py"), "--run", str(run),
                     "--camera", camera, "--video", str(raw_video), "--replay-start-ms", str(replay_start),
-                    "--out", str(overlay_video)], check=True)
+                    "--path", str(Path(path_file).resolve()), "--out", str(overlay_video)], check=True)
+    overlay_video.with_suffix(".ass").unlink(missing_ok=True)
     print(json.dumps({"raw": str(raw_video), "overlay": str(overlay_video), "replay_start_ms": replay_start}))
 
 

@@ -95,7 +95,11 @@ what actually happened. A packet capture is exact.
   `.mcpr` back through `harness/bots/replay_server.js` into the real Minecraft 26.1.2
   client (`harness/client/install_client.py`, downloaded from Mojang and SHA-1 verified,
   in `.local/minecraft`) on its own Xvfb display. The client flies a keyframed camera path
-  (`harness/cameras/film-*.json`) and ffmpeg records it into `videos/` (ignored). The
+  (`harness/cameras/film-*.json`: overview path segments, plus third-person "follow"
+  segments behind a named bot, positioned from the replayed entity packets), and
+  ffmpeg records it into `videos/` (ignored). Replay footage is named
+  `packet-replay_*` and carries a burned-in banner saying it was recreated from the
+  packets of a real test run, plus the active camera mode. The
   camera must stay inside the area the recorder received. All footage comes from the
   real client; there are no drawn or simulated stand-ins.
 - `harness/video/overlay.py`: burns per-tick metrics for the region nearest the camera

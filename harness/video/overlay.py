@@ -43,8 +43,19 @@ def ass_time(ms):
     return f"{h}:{m:02d}:{s:02d}.{ms // 10:02d}"
 
 
-def build_ass(run, camera, replay_start_ms, video_ms, width, height):
+def camera_mode(segments, t_s):
+    for seg in segments:
+        if seg["t0"] <= t_s <= seg["t1"]:
+            return f"third-person: {seg['target']}" if seg["mode"] == "follow" else "overview path"
+    return "overview path"
+
+
+def build_ass(run, camera, replay_start_ms, video_ms, width, height, path_file=None):
     meta = json.loads((run / "meta.json").read_text())
+    segments = []
+    if path_file:
+        spec = json.loads(Path(path_file).read_text())
+        segments = spec.get("segments") or [{"mode": "path", "t0": 0, "t1": spec["keyframes"][-1]["t"]}]
     cam = meta["cameras"][int(camera.removeprefix("cam"))]
     with zipfile.ZipFile(run / "recordings" / f"{camera}.mcpr") as z:
         rec_date = json.loads(z.read("metaData.json"))["date"]
@@ -96,7 +107,7 @@ def build_ass(run, camera, replay_start_ms, video_ms, width, height):
         lag = (int(t["tick_start_ns"]) - int(t["scheduled_start_ns"])) / 1e6
         one_sec = sum(1 for s in starts[:i + 1] if s > starts[i] - 1000)
         lines = [
-            f"replay {ass_time(w - rec_date)}   {meta['label']}",
+            f"replay {ass_time(w - rec_date)}   camera: {camera_mode(segments, (w - t0_wall) / 1000)}",
             f"region {region}  tick #{i}",
             f"tick time {dur:6.2f} ms   cpu {cpu:6.2f} ms",
             f"start lag {lag:6.2f} ms   ticks/1s {one_sec:2d}",
@@ -117,10 +128,14 @@ PlayResY: {height}
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: HUD,DejaVu Sans Mono,{max(14, height // 40)},&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,3,2,0,7,20,20,20,1
+Style: Banner,DejaVu Sans,{max(14, height // 38)},&H00FFFFFF,&H00FFFFFF,&H00000000,&HA0000000,1,0,0,0,100,100,0,0,3,3,0,2,20,20,16,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
+    banner = (f"PACKET REPLAY - recreated from packets recorded during real test run "
+              f"{run.name} ({meta['jar']}, {meta.get('bots_joined', '?')} bots). Rendered afterwards; not live.")
+    events.append(f"Dialogue: 1,{ass_time(0)},{ass_time(video_ms)},Banner,,0,0,0,,{{\\an2}}{banner}")
     return header + "\n".join(events) + "\n", len(events)
 
 
@@ -140,10 +155,11 @@ def main():
     ap.add_argument("--video", required=True)
     ap.add_argument("--replay-start-ms", type=int, default=0)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--path", help="camera path JSON used for the footage (labels the camera mode)")
     ap.add_argument("--ass-only", action="store_true")
     a = ap.parse_args()
     width, height, duration = probe(a.video)
-    ass, n = build_ass(Path(a.run), a.camera, a.replay_start_ms, duration, width, height)
+    ass, n = build_ass(Path(a.run), a.camera, a.replay_start_ms, duration, width, height, a.path)
     ass_path = Path(a.out).with_suffix(".ass")
     ass_path.write_text(ass)
     print(f"{n} tick events -> {ass_path}")
