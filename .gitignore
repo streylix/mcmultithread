@@ -1,0 +1,12 @@
+.local/
+.env
+.env.*
+!.env.example
+.gradle/
+**/build/
+upstream/
+worktrees/
+*.jfr
+*.hprof
+*.log
+__pycache__/
