@@ -18,6 +18,5 @@ explicit approval and calibrated host-pressure monitoring are in place.
 The server harness is not implemented yet.
 
 This starter intentionally has no source license pending component review.
-No upstream server code or binary is included. The local Git repository has no
-remote yet; the pre-commit hook runs the project-local Gitleaks (see
+No upstream server code or binary is included. Repository: https://github.com/streylix/mcmultithread. The local pre-commit hook runs the project-local Gitleaks (see
 docs/TOOLCHAIN.md).
