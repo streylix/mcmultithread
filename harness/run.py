@@ -153,7 +153,7 @@ def run(args):
     meta = {"label": args.label, "jar": Path(args.jar).name, "jar_sha256": sha256(args.jar),
             "world": Path(args.world).name, "world_sha256": sha256(args.world),
             "bots": args.bots, "seed": args.seed, "warmup_s": args.warmup, "measure_s": args.duration,
-            "mobs": args.mobs, "cameras": cameras, "jvm_args": JVM_ARGS, "view_distance": args.view_distance}
+            "mobs": args.mobs, "cameras": cameras, "center_x": args.center_x, "center_z": args.center_z, "jvm_args": JVM_ARGS, "view_distance": args.view_distance}
     host = subprocess.Popen([sys.executable, "-I", str(ROOT / "scripts" / "pressure-monitor.py"), "--interval", "1"],
                             stdout=(rundir / "host.csv").open("w"), stderr=subprocess.DEVNULL)
     srv = Server(rundir / "server", Path(args.jar), Path(args.world), [TELEMETRY_JAR], args.view_distance)
@@ -171,9 +171,10 @@ def run(args):
             srv.cmd(f"gamemode spectator {name}")
             srv.cmd(f"tp {name} {cam['x']} {cam['y']} {cam['z']} {cam.get('yaw', 0)} {cam.get('pitch', 30)}")
         for _ in range(args.mobs):
-            x, z = rng.randint(-450, 450), rng.randint(-450, 450)
+            x = args.center_x + rng.randint(-args.spread, args.spread)
+            z = args.center_z + rng.randint(-args.spread, args.spread)
             srv.cmd(f"summon {rng.choice(['cow', 'pig', 'sheep', 'chicken'])} {x} 1 {z}")
-        swarm = start_node("swarm.js", ["127.0.0.1", PORT, args.bots, args.seed, rundir / "actions.jsonl", "b", 450],
+        swarm = start_node("swarm.js", ["127.0.0.1", PORT, args.bots, args.seed, rundir / "actions.jsonl", "b", args.spread],
                            rundir / "swarm.log")
         joined, deadline = set(), time.time() + 60 + args.bots * 0.5
         while len(joined) < args.bots and time.time() < deadline:
@@ -185,7 +186,9 @@ def run(args):
                         joined.add(e["bot"])
                         srv.cmd(f"gamemode creative {e['bot']}")
                         srv.cmd(f"give {e['bot']} oak_planks 640")
-                        srv.cmd(f"tp {e['bot']} {rng.randint(-450, 450)} 1 {rng.randint(-450, 450)}")
+                        bx = args.center_x + rng.randint(-args.spread, args.spread)
+                        bz = args.center_z + rng.randint(-args.spread, args.spread)
+                        srv.cmd(f"tp {e['bot']} {bx} 1 {bz}")
         meta["bots_joined"] = len(joined)
         meta["warmup_start_wall_ms"] = int(time.time() * 1000)
         time.sleep(args.warmup)
@@ -294,6 +297,9 @@ def main():
     r.add_argument("--view-distance", type=int, default=10)
     r.add_argument("--cameras", help="JSON list of {x,y,z,yaw,pitch}")
     r.add_argument("--mc-version", default="26.1.2", help="written into recording metadata")
+    r.add_argument("--spread", type=int, default=450, help="bots/mobs placed within +-spread of the centre")
+    r.add_argument("--center-x", type=int, default=0)
+    r.add_argument("--center-z", type=int, default=0)
     a = ap.parse_args()
     prepare_world(a) if a.command == "prepare-world" else run(a)
 

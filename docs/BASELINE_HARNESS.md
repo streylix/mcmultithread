@@ -79,8 +79,7 @@ what actually happened. A packet capture is exact.
 
 - `harness/world/build_city.py`: deterministic `city-1000` (seed 5000) built on the
   vanilla 26.1.2 jar over RCON; `layout.json` lists every building, park, redstone
-  clock and hopper loop. `harness/world/render_map.py` draws a top-down map from the
-  saved region files.
+  clock and hopper loop.
 - `harness/run.py prepare-world`: Chunky pregeneration (radius 640) on the Folia jar,
   then a `.tar.gz` archive plus manifest with SHA-256s.
 - `harness/telemetry`: TickTelemetry plugin (build with `build.sh SERVER_DIR`).
@@ -91,8 +90,16 @@ what actually happened. A packet capture is exact.
   `harness/bots/swarm.js`: seeded bots, JSONL action log with latencies.
 - `harness/run.py run`: restore world, start server, cameras (`harness/cameras/*.json`),
   mobs, swarm, warmup, measure, collect, `summary.json`.
+- Filming happens after the run, never during it. During a run only the hidden
+  recorder joins and saves packets. Afterwards `harness/client/film.py` plays the
+  `.mcpr` back through `harness/bots/replay_server.js` into the real Minecraft 26.1.2
+  client (`harness/client/install_client.py`, downloaded from Mojang and SHA-1 verified,
+  in `.local/minecraft`) on its own Xvfb display. The client flies a keyframed camera path
+  (`harness/cameras/film-*.json`) and ffmpeg records it into `videos/` (ignored). The
+  camera must stay inside the area the recorder received. All footage comes from the
+  real client; there are no drawn or simulated stand-ins.
 - `harness/video/overlay.py`: burns per-tick metrics for the region nearest the camera
-  into a ReplayMod render (top-left, colour by tick time: green < 40 ms, yellow < 50,
+  into a film.py capture or a ReplayMod render (top-left, colour by tick time: green < 40 ms, yellow < 50,
   red over budget). Pass the replay timestamp the render starts at.
 
 First smoke run (10 bots, 50 animals, 1 camera, 40 s measured; not a calibrated

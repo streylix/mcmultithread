@@ -6,12 +6,12 @@ lasting until the next tick, showing that tick's measured values, so the video s
 through server orchestration tick by tick.
 
 Time alignment: replay time 0 is the recorder's start (metaData.json `date`, wall ms).
-ReplayMod renders from a chosen replay timestamp at 1x speed, so a video frame at time
-t shows wall time  date + replay_start_ms + t.  Telemetry nanoTime is mapped to wall time
-through the per-second anchors in regions.csv.
+Footage (harness/client/film.py, or a ReplayMod render) starts at --replay-start-ms and
+plays at 1x, so a frame at video time t shows wall time date + replay_start_ms + t.
+Telemetry nanoTime is mapped to wall time through the per-second anchors in regions.csv.
 
 Usage:
-  python3 harness/video/overlay.py --run RUN_DIR --camera cam0 --video render.mp4 \
+  python3 harness/video/overlay.py --run RUN_DIR --camera cam0 --video film.mp4 \
       --replay-start-ms 12000 --out overlay.mp4
   (--ass-only writes just the .ass subtitle file)
 """
@@ -45,8 +45,7 @@ def ass_time(ms):
 
 def build_ass(run, camera, replay_start_ms, video_ms, width, height):
     meta = json.loads((run / "meta.json").read_text())
-    cam_index = int(camera.removeprefix("cam"))
-    cam = meta["cameras"][cam_index]
+    cam = meta["cameras"][int(camera.removeprefix("cam"))]
     with zipfile.ZipFile(run / "recordings" / f"{camera}.mcpr") as z:
         rec_date = json.loads(z.read("metaData.json"))["date"]
     regions = list(csv.DictReader((run / "regions.csv").open()))
@@ -100,7 +99,7 @@ def build_ass(run, camera, replay_start_ms, video_ms, width, height):
             f"replay {ass_time(w - rec_date)}   {meta['label']}",
             f"region {region}  tick #{i}",
             f"tick time {dur:6.2f} ms   cpu {cpu:6.2f} ms",
-            f"start lag {lag:6.2f} ms   tps {one_sec:2d}",
+            f"start lag {lag:6.2f} ms   ticks/1s {one_sec:2d}",
             f"mspt 1s avg {sum(mspt) / len(mspt):6.2f}  max {max(mspt):6.2f}",
             f"regions {len(rows)}   players {near['players']}   entities {near['entities']}",
             f"chunks {near['chunks']}",
