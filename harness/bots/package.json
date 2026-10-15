@@ -1,0 +1,9 @@
+{
+  "name": "project5k-bots",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "mineflayer": "^4.39.0"
+  }
+}

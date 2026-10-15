@@ -26,6 +26,27 @@ system-wide. Re-verify checksums when re-provisioning.
 - Minecraft `26.2`, channel BETA
 - Checkout: `upstream/folia-baseline` (ignored; do not edit)
 
+## Folia 26.1 baseline (harness target)
+
+Mineflayer 4.39.0 / minecraft-data 3.117.0 have no 26.2 protocol data, so
+connected-client tests use the 26.1 line. The 26.2 checkout above is kept.
+
+- Branch `ver/26.1.x`, commit `62dc0f257a4f5de1ef2eae8cf1627156a769c67f` (2026-05-06)
+- Paper ref `b4682bfef616ac62e73cc96046dacdf4a6f53eeb`, Minecraft `26.1.2`
+  (Mineflayer maps it to 26.1 data, protocol 775)
+- Same JDK and verified Gradle 9.4.1 wrapper; checkout `upstream/folia-26.1-baseline`
+- Built 2026-10-15, source unmodified:
+  - `folia-paperclip-26.1.2.local-SNAPSHOT.jar` `8057a60e002ae33ff24a95101d509a3ef597acd38511ae87e5df9353faea03ef`
+  - `folia-bundler-26.1.2.local-SNAPSHOT.jar` `6212cae7b116c1159e1c6fe3b91aa9126c48ee82b225b9764b8e6a6c4a00f621`
+  - `folia-server-26.1.2.local-SNAPSHOT.jar` `45b8dbafabf2cd62f89c7271fd1d2e46b62fdbf86f361f15c6b47f1063b2d000`
+- Smoke test 2026-10-15: 5 Mineflayer bots spawned, moved and chatted
+  (`harness/bots/smoke.js`).
+
+## Node.js
+
+- v24.22.0 LTS linux-x64, verified against nodejs.org `SHASUMS256.txt`; `.local/node`
+- Bot dependencies locked in `harness/bots/package-lock.json`
+
 ## Gradle
 
 - Wrapper from the Folia checkout, distribution `gradle-9.4.1-bin.zip`

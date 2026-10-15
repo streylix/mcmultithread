@@ -10,3 +10,4 @@ worktrees/
 *.hprof
 *.log
 __pycache__/
+node_modules/

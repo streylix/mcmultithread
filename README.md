@@ -18,7 +18,7 @@ explicit approval and calibrated host-pressure monitoring are in place.
 The server harness is not implemented yet.
 
 License: GPL-3.0 (`LICENSE`) for the repository and any Folia/Paper-derived
-patches; `bench/` and `scripts/` are MIT (their own `LICENSE`). See
+patches; `bench/`, `harness/` and `scripts/` are MIT (their own `LICENSE`). See
 docs/LICENSE_REVIEW.md. Minecraft code and server jars are never distributed.
 No upstream server code or binary is included. Repository: https://github.com/streylix/mcmultithread. The local pre-commit hook runs the project-local Gitleaks (see
 docs/TOOLCHAIN.md).
