@@ -37,4 +37,13 @@ system-wide. Re-verify checksums when re-provisioning.
 
 ## Build artifacts
 
-Pending: record server jar hashes after the first contained build.
+First baseline build 2026-10-15: `applyAllPatches` then
+`folia-server:createPaperclipJar`, Temurin 25.0.4.1, no source changes
+(`git status` clean). Outputs in `upstream/folia-baseline/folia-server/build/libs/`:
+
+- `folia-paperclip-26.2.local-SNAPSHOT.jar` `8b80c258274219a8a3bfb7e36605ce0932a7ea4be822de450d735a9478ec1eff`
+- `folia-bundler-26.2.local-SNAPSHOT.jar` `05b76b9f58f8f06e9427d15216732d7380fe6477d6f25850ca62119af170159a`
+- `folia-server-26.2.local-SNAPSHOT.jar` `48b431424b52c200b98c1f50168cdb181091feaef8b940001e57d6f19725126b`
+
+Local builds are not yet verified bit-reproducible; rebuild and compare before relying
+on these hashes as an identity check. Never publish these jars (docs/LICENSE_REVIEW.md).

@@ -37,7 +37,7 @@ Deferred by owner: resource guardrails (cgroup caps, single workload slot,
 benchmark admission) are suspended; `PROJECT5K_CONTAIN=1` re-enables the launcher
 limits. Reinstate before any large or unattended load.
 
-Pending: owner license choice and LICENSE files; artifact hash record; world
+Pending: owner license choice and LICENSE files; build reproducibility check; world
 fixtures and baseline/noise harness implementation (needs Node.js approval);
 first JMH run and analysis.
 These are pending, not completed security or reproducibility guarantees.
