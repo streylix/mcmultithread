@@ -1,0 +1,6 @@
+name: TickTelemetry
+version: 0.1.0
+main: dev.project5k.telemetry.TickTelemetry
+api-version: '26.1'
+folia-supported: true
+description: Exports every Folia region tick (timing, CPU, lag) and per-second region stats.
