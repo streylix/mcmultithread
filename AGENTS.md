@@ -4,6 +4,9 @@ Read PROJECT_SPEC.md before work; it is the authoritative project scope.
 Use docs/BENCHMARK_PROTOCOL.md for measurement acceptance.
 
 - Correctness first, host safety second, reproducible comparisons third.
+- Hardware/resource guardrails (CPU/memory caps, single workload slot, benchmark
+  admission) are suspended by the owner as of 2026-10-15; the rules below that
+  concern them are on hold until reinstated.
 - Default aggregate project limit: 200% CPU and 6 GiB memory, including child processes.
 - Do not install packages or run intensive benchmarks without explicit approval.
 - Never run builds or load generators without verified resource containment.

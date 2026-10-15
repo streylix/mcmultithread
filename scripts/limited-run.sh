@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# Resource guardrails are suspended by the owner (2026-10-15): run directly, in
+# parallel, without cgroup limits. Set PROJECT5K_CONTAIN=1 to restore containment.
+if [[ ${PROJECT5K_CONTAIN:-0} != 1 ]]; then
+    [[ ${1:-} == --profile ]] && shift 2
+    exec "$@"
+fi
 profile=development
 if [[ ${1:-} == --profile ]]; then
     profile=${2:-}

@@ -28,7 +28,16 @@ Done 2026-10-15 (see docs/TOOLCHAIN.md): project-local Temurin 25 and Gitleaks
 baseline pinned to an exact commit with a verified Gradle wrapper, first
 contained baseline build.
 
-Pending: full license inventory; Gitleaks CI integration, dependency scanning and
-protected-branch configuration (need a remote); artifact hash record; synthetic
-world fixtures and baseline/noise harness; JMH implementation and compilation.
+Also done 2026-10-15: license review (docs/LICENSE_REVIEW.md); GitHub secret
+scanning, push protection, Dependabot and CI Gitleaks; host pressure monitor
+(scripts/pressure-monitor.py, thresholds provisional); JMH scheduler dispatch
+benchmark (bench/, compiles, not yet run); harness design (docs/BASELINE_HARNESS.md).
+
+Deferred by owner: resource guardrails (cgroup caps, single workload slot,
+benchmark admission) are suspended; `PROJECT5K_CONTAIN=1` re-enables the launcher
+limits. Reinstate before any large or unattended load.
+
+Pending: owner license choice and LICENSE files; artifact hash record; world
+fixtures and baseline/noise harness implementation (needs Node.js approval);
+first JMH run and analysis.
 These are pending, not completed security or reproducibility guarantees.
