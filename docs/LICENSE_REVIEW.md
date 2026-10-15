@@ -42,5 +42,4 @@ list must be treated as GPL-3.0. In practice, treat all Paper/Folia-derived code
   not re-read for this review).
 - Licenses of runtime dependencies pulled by the build (Netty, Adventure, etc.) only
   matter if we redistribute binaries, which we don't plan to.
-- Owner decision: choose GPL-3.0 (+ optional MIT for tools) and add LICENSE files
-  before the first derived-code commit.
+Owner decision 2026-10-15: GPL-3.0 at the repository root; MIT for `bench/` and `scripts/`.
