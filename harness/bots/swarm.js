@@ -2,15 +2,21 @@
 // waypoints, place and break blocks, attack nearby mobs, chat. Every action is logged as
 // attempted, then as completed (with latency) or failed, so lag-induced divergence is visible.
 //
-// Usage: node swarm.js HOST PORT COUNT SEED OUT_FILE [PREFIX] [HALF] [DURATION_S]
+// Usage: node swarm.js HOST PORT COUNT SEED OUT_FILE [PREFIX] [HALF] [DURATION_S] [CENTER_X] [CENTER_Z]
+// Bots stay within +-HALF of the centre. Movement uses mineflayer-pathfinder (routes around
+// buildings and through doorways, never digs); targets are checked before acting.
 // Log lines (JSONL): {t: wall ms, bot, action, phase: attempt|done|fail, ms?, pos}
 // The run script puts bots in creative mode and teleports them to start points.
 import fs from 'node:fs'
+import { createRequire } from 'node:module'
 import mineflayer from 'mineflayer'
 import { Vec3 } from 'vec3'
 
+const { pathfinder, Movements, goals } = createRequire(import.meta.url)('mineflayer-pathfinder')
+
 const [host = '127.0.0.1', port = '25599', countArg = '5', seedArg = '1', outFile = 'actions.jsonl',
-  prefix = 'b', halfArg = '480', durationArg = '0'] = process.argv.slice(2)
+  prefix = 'b', halfArg = '480', durationArg = '0', cxArg = '0', czArg = '0'] = process.argv.slice(2)
+const centre = { x: Number(cxArg), z: Number(czArg) }
 const count = Number(countArg)
 const half = Number(halfArg)
 const log = fs.createWriteStream(outFile, { flags: 'a' })
@@ -45,65 +51,88 @@ async function timed (bot, action, fn) {
   }
 }
 
-function walkTo (bot, target, timeoutMs = 15000) {
-  return new Promise((resolve, reject) => {
-    const started = Date.now()
-    let last = bot.entity.position.clone()
-    let stuckTicks = 0
-    const onTick = () => {
-      const pos = bot.entity.position
-      const dist = Math.hypot(target.x - pos.x, target.z - pos.z)
-      if (dist < 1.5) return done()
-      if (Date.now() - started > timeoutMs) return done(new Error('walk timeout'))
-      bot.lookAt(new Vec3(target.x, pos.y + 1.6, target.z), true)
-      bot.setControlState('forward', true)
-      bot.setControlState('sprint', dist > 6)
-      stuckTicks = pos.distanceTo(last) < 0.05 ? stuckTicks + 1 : 0
-      bot.setControlState('jump', stuckTicks > 5)
-      last = pos.clone()
-    }
-    const done = (err) => {
-      bot.removeListener('physicsTick', onTick)
-      bot.clearControlStates()
-      err ? reject(err) : resolve()
-    }
-    bot.on('physicsTick', onTick)
-  })
+async function goNear (bot, pos, range, timeoutMs = 15000) {
+  // pathfinder.stop() is deferred to a later tick and would cancel the *next* goal, so a
+  // timeout clears the goal immediately instead.
+  let timer
+  try {
+    await Promise.race([
+      bot.pathfinder.goto(new goals.GoalNear(pos.x, pos.y, pos.z, range)),
+      new Promise((resolve, reject) => {
+        timer = setTimeout(() => { bot.pathfinder.setGoal(null); reject(new Error('path timeout')) }, timeoutMs)
+      })
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
-async function placeBlock (bot) {
-  const below = bot.blockAt(bot.entity.position.offset(1, -1, 0).floored())
-  if (!below || below.name === 'air') throw new Error('no support block')
+const OFFSETS = [[2, 0], [-2, 0], [0, 2], [0, -2], [2, 2], [-2, 2], [2, -2], [-2, -2], [3, 0], [0, 3]]
+
+function freeSpot (bot, pos) {
+  // Placeable: solid support below, air at the spot, nobody standing in it.
+  const below = bot.blockAt(pos.offset(0, -1, 0))
+  const at = bot.blockAt(pos)
+  if (!below || below.boundingBox !== 'block' || !at || at.name !== 'air') return null
+  const occupied = Object.values(bot.entities).some(e => e.position && e.position.floored().equals(pos))
+  return occupied ? null : below
+}
+
+async function placeBlock (bot, rand) {
   const item = bot.inventory.items().find(i => i.name === 'oak_planks')
   if (!item) throw new Error('no blocks in inventory')
   await bot.equip(item, 'hand')
-  await bot.placeBlock(below, new Vec3(0, 1, 0))
+  const base = bot.entity.position.floored()
+  const start = Math.floor(rand() * OFFSETS.length)
+  for (let k = 0; k < OFFSETS.length; k++) {
+    const [dx, dz] = OFFSETS[(start + k) % OFFSETS.length]
+    const spot = base.offset(dx, 0, dz)
+    const support = freeSpot(bot, spot)
+    if (support) {
+      await bot.placeBlock(support, new Vec3(0, 1, 0))
+      return
+    }
+  }
+  throw new Error('no free spot nearby')
 }
 
 async function breakBlock (bot) {
-  const target = bot.findBlock({ matching: b => b.name === 'oak_planks', maxDistance: 4 })
-  if (!target) throw new Error('nothing to break')
+  const target = bot.findBlock({ matching: b => b.name === 'oak_planks', maxDistance: 24 })
+  if (!target) throw new Error('no planks within 24')
+  if (target.position.distanceTo(bot.entity.position.offset(0, 1.6, 0)) > 4) await goNear(bot, target.position, 2, 10000)
   await bot.dig(target, true)
 }
 
 async function attackMob (bot) {
-  const mob = bot.nearestEntity(e => e.type === 'mob' || e.type === 'hostile' || e.type === 'animal')
-  if (!mob || mob.position.distanceTo(bot.entity.position) > 4) throw new Error('no mob in reach')
+  const mob = bot.nearestEntity(e => (e.type === 'animal' || e.type === 'mob' || e.type === 'hostile') &&
+    e.position.distanceTo(bot.entity.position) < 32)
+  if (!mob) throw new Error('no mob within 32')
+  if (mob.position.distanceTo(bot.entity.position) > 3) await goNear(bot, mob.position, 2, 10000)
+  if (!mob.isValid || mob.position.distanceTo(bot.entity.position) > 3.5) throw new Error('mob moved out of reach')
   await bot.lookAt(mob.position.offset(0, mob.height / 2, 0), true)
   bot.attack(mob)
 }
 
 async function script (bot, rand) {
-  const waypoint = () => new Vec3(-half + rand() * 2 * half, 0, -half + rand() * 2 * half)
+  // A waypoint must be loaded and standable: solid below, two blocks of air (not in a wall).
+  const waypoint = () => {
+    let p
+    for (let k = 0; k < 20; k++) {
+      p = new Vec3(Math.floor(centre.x - half + rand() * 2 * half), 0, Math.floor(centre.z - half + rand() * 2 * half))
+      const below = bot.blockAt(p.offset(0, -1, 0))
+      const feet = bot.blockAt(p)
+      const head = bot.blockAt(p.offset(0, 1, 0))
+      if (below?.boundingBox === 'block' && feet?.boundingBox === 'empty' && head?.boundingBox === 'empty') return p
+    }
+    return p
+  }
   let n = 0
   while (bot.entity) {
     const roll = rand()
     if (roll < 0.55) {
-      const here = bot.entity.position
-      const near = waypoint().scaled(0.05).plus(new Vec3(here.x, 0, here.z)) // short hop near current spot
-      await timed(bot, 'walk', () => walkTo(bot, near))
+      await timed(bot, 'walk', () => goNear(bot, waypoint(), 2, 20000))
     } else if (roll < 0.70) {
-      await timed(bot, 'place', () => placeBlock(bot))
+      await timed(bot, 'place', () => placeBlock(bot, rand))
     } else if (roll < 0.80) {
       await timed(bot, 'break', () => breakBlock(bot))
     } else if (roll < 0.92) {
@@ -126,8 +155,14 @@ async function script (bot, rand) {
 
 function startBot (i) {
   const rand = rng(Number(seedArg) * 100003 + i)
-  const bot = mineflayer.createBot({ host, port: Number(port), username: `${prefix}${i}`, auth: 'offline', viewDistance: 'short' })
+  const bot = mineflayer.createBot({ host, port: Number(port), username: `${prefix}${i}`, auth: 'offline', viewDistance: 'normal' })
+  bot.loadPlugin(pathfinder)
   bot.once('spawn', () => {
+    const moves = new Movements(bot)
+    moves.canDig = false
+    moves.allow1by1towers = false
+    moves.scafoldingBlocks = []
+    bot.pathfinder.setMovements(moves)
     record(bot, 'spawn', 'done')
     setTimeout(() => script(bot, rand).catch(e => record(bot, 'script', 'fail', { err: String(e) })), 3000)
   })

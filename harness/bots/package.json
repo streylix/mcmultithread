@@ -4,6 +4,7 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "mineflayer": "^4.39.0"
+    "mineflayer": "^4.39.0",
+    "mineflayer-pathfinder": "^2.4.5"
   }
 }

@@ -110,8 +110,11 @@ First smoke run (10 bots, 50 animals, 1 camera, 40 s measured; not a calibrated
 baseline): 20.0 TPS, one region, median region tick 8.5 ms, p99 12.8 ms. All bots'
 view areas overlapped, so Folia merged the whole city into a single region.
 
-Known bot-script gaps: naive steering times out at walls; mobs too sparse for attacks;
-some block placements refused. Fix before noise calibration.
+Bot actions (2026-10-15, 30 bots, 60 animals, 60 s): walking uses mineflayer-pathfinder
+to standable waypoints, placement checks for a free supported spot, break/attack path to
+targets within 24/32 blocks. Failure rates fell from walk 39% / place 69% / break 40% /
+attack 81% to 19% / 8% / 11% / 17%. Remaining walk failures are 20 s path timeouts in the
+crowd. Every run records at least one camera (default: above the centre).
 
 ## Open items
 

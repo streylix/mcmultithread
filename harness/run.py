@@ -149,7 +149,12 @@ def run(args):
     stamp = time.strftime("%Y%m%d-%H%M%S")
     rundir = ROOT / ".local" / "runs" / f"{stamp}-{args.label}"
     rundir.mkdir(parents=True)
-    cameras = json.loads(Path(args.cameras).read_text()) if args.cameras else []
+    # Every run records at least one camera, so any run can be filmed later. A/B pairs
+    # must use identical cameras: each recorder is one extra connected client.
+    cameras = (json.loads(Path(args.cameras).read_text()) if args.cameras
+               else [{"x": args.center_x, "y": 60, "z": args.center_z, "yaw": 0, "pitch": 90}])
+    if not cameras:
+        sys.exit("at least one camera is required")
     meta = {"label": args.label, "jar": Path(args.jar).name, "jar_sha256": sha256(args.jar),
             "world": Path(args.world).name, "world_sha256": sha256(args.world),
             "bots": args.bots, "seed": args.seed, "warmup_s": args.warmup, "measure_s": args.duration,
@@ -174,7 +179,8 @@ def run(args):
             x = args.center_x + rng.randint(-args.spread, args.spread)
             z = args.center_z + rng.randint(-args.spread, args.spread)
             srv.cmd(f"summon {rng.choice(['cow', 'pig', 'sheep', 'chicken'])} {x} 1 {z}")
-        swarm = start_node("swarm.js", ["127.0.0.1", PORT, args.bots, args.seed, rundir / "actions.jsonl", "b", args.spread],
+        swarm = start_node("swarm.js", ["127.0.0.1", PORT, args.bots, args.seed, rundir / "actions.jsonl", "b", args.spread,
+                                         0, args.center_x, args.center_z],
                            rundir / "swarm.log")
         joined, deadline = set(), time.time() + 60 + args.bots * 0.5
         while len(joined) < args.bots and time.time() < deadline:
@@ -295,7 +301,7 @@ def main():
     r.add_argument("--warmup", type=int, default=60)
     r.add_argument("--duration", type=int, default=120)
     r.add_argument("--view-distance", type=int, default=10)
-    r.add_argument("--cameras", help="JSON list of {x,y,z,yaw,pitch}")
+    r.add_argument("--cameras", help="JSON list of {x,y,z,yaw,pitch}; default: one above the centre")
     r.add_argument("--mc-version", default="26.1.2", help="written into recording metadata")
     r.add_argument("--spread", type=int, default=450, help="bots/mobs placed within +-spread of the centre")
     r.add_argument("--center-x", type=int, default=0)
