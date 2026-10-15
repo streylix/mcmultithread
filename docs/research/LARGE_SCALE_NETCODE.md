@@ -79,6 +79,7 @@ with distance; there is no per-connection bandwidth budget or priority.
 | 2 | **Tracker off the owner thread** (Iris: replication data separated from the game thread): compute visibility and build packets on helper threads from a per-tick snapshot | 0 | entity-tracker CPU on the one region thread |
 | 3 | **Distance-tiered update rate** (Iris sphere prioritiser): e.g. every 2 ticks within 32 blocks, 4 within 64, 8 beyond; vanilla clients already interpolate entity movement | 1 | packet count and bandwidth (~5 Gbit/s estimate at 5,000) |
 | 4 | **Per-connection budget with priority accumulation** (Iris): when a connection's per-tick budget is spent, defer lower-priority updates; deferred priority grows until sent | 1 | bandwidth spikes; graceful degradation instead of lag |
+| 4b | **Coalesce superseded updates** (Source/CS2 snapshot model): an entity update still waiting in a connection's queue is replaced by the newer one (send only the latest position/metadata), not queued behind it; relative moves are re-based on the last *sent* position | 1 | bandwidth and queueing delay under load; pairs with #4 |
 | 5 | **Interaction-only checks** (PlanetSide 2 NPC fix): replace "check every entity in range" loops with event-driven checks where vanilla semantics allow | 0–2, per case | per-tick scans in crowds |
 
 1 and 2 change nothing players see, so they are the first CPU-track candidates; they also
