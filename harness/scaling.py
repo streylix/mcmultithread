@@ -215,8 +215,9 @@ def matrix(args, out):
                                                           'rev-parse', 'HEAD'], text=True).strip()
     calibrate.write_json(out / 'manifest.json', manifest)
     directories, fallback_done = [], False
+    sizes = tuple(args.sizes)
     schedule = [(rep + 1, size) for rep in range(args.repetitions)
-                for size in (SIZES[rep % len(SIZES):] + SIZES[:rep % len(SIZES)])]
+                for size in (sizes[rep % len(sizes):] + sizes[:rep % len(sizes)])]
     index = 0
     while index < len(schedule):
         rep, size = schedule[index]
@@ -250,9 +251,6 @@ def matrix(args, out):
         result = analyze(directories, args, out)
         latest = result['runs'][-1]
         print(f"Finished {label}: {'valid' if latest['valid'] else '; '.join(latest['reasons'])}", flush=True)
-        if latest.get('meta', {}).get('host_abort'):
-            print('ABORTING MATRIX: host PSI affected; no further workload.', flush=True)
-            break
         if (out / 'STOP').exists():
             print('Stopping between runs: local STOP file exists.', flush=True)
             break
@@ -269,6 +267,7 @@ def main():
     run.add_argument('--jar', default=str(ROOT / 'upstream/folia-26.1-baseline/folia-server/build/libs/folia-paperclip-26.1.2.local-SNAPSHOT.jar'))
     run.add_argument('--world', default=str(ROOT / '.local/worlds/city-1000.tar.gz'))
     run.add_argument('--repetitions', type=calibrate.positive_int, default=3)
+    run.add_argument('--sizes', type=calibrate.positive_int, nargs='+', default=list(SIZES))
     run.add_argument('--warmup', type=calibrate.positive_int, default=180)
     run.add_argument('--duration', type=calibrate.positive_int, default=300)
     run.add_argument('--server-cpus', default='0-2,6-8')

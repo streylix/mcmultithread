@@ -179,11 +179,16 @@ def network_snapshot(path):
 
 
 class HostWatch:
-    """Cheap frequency samples and continuous PSI aborts, including warmup/setup."""
+    """Cheap frequency samples and continuous PSI warnings, including warmup/setup.
+
+    Sustained pressure is recorded (meta.json `host_warnings`), not fatal: the owner
+    accepts slower background services during tests. Analysis still marks runs whose
+    measurement window was under pressure as invalid for comparison."""
 
     def __init__(self, directory):
         self.finished = threading.Event()
-        self.reason = None
+        self.warnings = []
+        self.warned = set()
         self.directory = directory
         self.thread = threading.Thread(target=self.watch, daemon=True)
         self.thread.start()
@@ -200,10 +205,14 @@ class HostWatch:
                     value = float(line.split()[1].split("=")[1])
                     if value > limit:
                         starts.setdefault(resource, now)
-                        if now - starts[resource] >= 10:
-                            self.reason = f"host PSI abort: {resource} some avg10 > {limit}% for >=10 s"
+                        if now - starts[resource] >= 10 and resource not in self.warned:
+                            self.warned.add(resource)
+                            self.warnings.append({"wall_ms": int(now * 1000), "resource": resource, "value": value,
+                                                  "warning": f"host PSI: {resource} some avg10 > {limit}% for >=10 s"})
+                            print(f"WARNING: {self.warnings[-1]['warning']} (now {value}%)", flush=True)
                     else:
                         starts.pop(resource, None)
+                        self.warned.discard(resource)
                 cpu = None
                 for line in Path("/proc/cpuinfo").read_text().splitlines():
                     if line.startswith("processor"):
@@ -214,8 +223,6 @@ class HostWatch:
                 self.finished.wait(1)
 
     def check(self):
-        if self.reason:
-            raise RuntimeError(self.reason)
         if not self.thread.is_alive():
             raise RuntimeError("host watch stopped unexpectedly")
 
@@ -351,8 +358,6 @@ def run(args):
     except Exception as exc:
         error = exc
         meta["runner_error"] = str(exc)
-        if watch.reason:
-            meta["host_abort"] = watch.reason
     finally:
         for swarm in swarms:
             if swarm.poll() is None:
@@ -376,6 +381,7 @@ def run(args):
         host.terminate()
         host.wait(timeout=10)
         watch.stop()
+        meta["host_warnings"] = watch.warnings
         meta["bots_joined"] = len(joined_bots(rundir))
         (rundir / "meta.json").write_text(json.dumps(meta, indent=1))
     with (rundir / "actions.jsonl").open("w") as merged:
