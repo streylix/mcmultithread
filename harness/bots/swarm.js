@@ -2,12 +2,14 @@
 // waypoints, place and break blocks, attack nearby mobs, chat. Every action is logged as
 // attempted, then as completed (with latency) or failed, so lag-induced divergence is visible.
 //
-// Usage: node swarm.js HOST PORT COUNT SEED OUT_FILE [PREFIX] [HALF] [DURATION_S] [CENTER_X] [CENTER_Z]
+// Usage: node swarm.js HOST PORT COUNT SEED OUT_FILE [PREFIX] [HALF] [DURATION_S]
+//        [CENTER_X] [CENTER_Z] [GLOBAL_OFFSET] [CONNECT_SPACING_MS] [START_DELAY_MS]
 // Bots stay within +-HALF of the centre. Movement uses mineflayer-pathfinder (routes around
 // buildings and through doorways, never digs); targets are checked before acting.
 // Log lines (JSONL): {t: wall ms, bot, action, phase: attempt|done|fail, ms?, pos}
 // The run script puts bots in creative mode and teleports them to start points.
 import fs from 'node:fs'
+import { monitorEventLoopDelay } from 'node:perf_hooks'
 import { createRequire } from 'node:module'
 import mineflayer from 'mineflayer'
 import { Vec3 } from 'vec3'
@@ -15,12 +17,21 @@ import { Vec3 } from 'vec3'
 const { pathfinder, Movements, goals } = createRequire(import.meta.url)('mineflayer-pathfinder')
 
 const [host = '127.0.0.1', port = '25599', countArg = '5', seedArg = '1', outFile = 'actions.jsonl',
-  prefix = 'b', halfArg = '480', durationArg = '0', cxArg = '0', czArg = '0'] = process.argv.slice(2)
+  prefix = 'b', halfArg = '480', durationArg = '0', cxArg = '0', czArg = '0',
+  offsetArg = '0', spacingArg = '250', delayArg = '0'] = process.argv.slice(2)
 const centre = { x: Number(cxArg), z: Number(czArg) }
 const count = Number(countArg)
 const half = Number(halfArg)
 const log = fs.createWriteStream(outFile, { flags: 'a' })
-const CONNECT_SPACING_MS = 250
+const CONNECT_SPACING_MS = Number(spacingArg)
+const lag = monitorEventLoopDelay({ resolution: 10 })
+lag.enable()
+const health = fs.createWriteStream(`${outFile}.health.jsonl`)
+const healthTimer = setInterval(() => {
+  health.write(JSON.stringify({ t: Date.now(), p50_ms: lag.percentile(50) / 1e6,
+    p99_ms: lag.percentile(99) / 1e6 }) + '\n')
+  lag.reset()
+}, 1000)
 
 // Small deterministic PRNG (mulberry32) so each bot's script depends only on SEED and index.
 function rng (seed) {
@@ -154,7 +165,7 @@ async function script (bot, rand) {
 }
 
 function startBot (i) {
-  const rand = rng(Number(seedArg) * 100003 + i)
+  const rand = rng(Number(seedArg) * 100003 + Number(offsetArg) + i)
   const bot = mineflayer.createBot({ host, port: Number(port), username: `${prefix}${i}`, auth: 'offline', viewDistance: 'normal' })
   bot.loadPlugin(pathfinder)
   bot.once('spawn', () => {
@@ -173,15 +184,22 @@ function startBot (i) {
 }
 
 const bots = []
-for (let i = 0; i < count; i++) {
+let stopping = false
+process.on('SIGINT', stop)
+process.on('SIGTERM', stop)
+await new Promise(resolve => setTimeout(resolve, Number(delayArg)))
+for (let i = 0; i < count && !stopping; i++) {
   bots.push(startBot(i))
   await new Promise(resolve => setTimeout(resolve, CONNECT_SPACING_MS))
 }
 
 function stop () {
+  if (stopping) return
+  stopping = true
+  clearInterval(healthTimer)
+  lag.disable()
+  health.end()
   for (const b of bots) { try { b.quit() } catch {} }
   setTimeout(() => log.end(() => process.exit(0)), 1500)
 }
-process.on('SIGINT', stop)
-process.on('SIGTERM', stop)
 if (Number(durationArg) > 0) setTimeout(stop, Number(durationArg) * 1000)

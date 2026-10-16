@@ -110,7 +110,7 @@ def scenario_for(meta):
     return "other"
 
 
-def read_run(directory, args):
+def read_run(directory, args, scaling=False):
     """Retain failures explicitly; never substitute zero for an absent metric."""
     directory = Path(directory).resolve()
     entry_path = directory / "calibration-entry.json"
@@ -124,10 +124,19 @@ def read_run(directory, args):
     try:
         meta = json.loads((directory / "meta.json").read_text())
         result.update(meta=meta, label=meta["label"], scenario=scenario_for(meta))
-        if result["scenario"] == "other":
+        if result["scenario"] == "other" and not scaling:
             reasons.append("not an idle or crowd50 scenario")
-        if meta.get("bots_joined") != meta.get("bots"):
+        if scaling:
+            joined = meta.get("bots_joined")
+            if joined is None:
+                joined = len(harness.joined_bots(directory))
+            result["bots_joined_observed"] = joined
+            if joined < .95 * meta["bots"]:
+                reasons.append(f"generator-limited: fewer than 95% joined: {joined} / {meta['bots']}")
+        elif meta.get("bots_joined") != meta.get("bots"):
             reasons.append(f"incomplete bot joins: {meta.get('bots_joined')} / {meta.get('bots')}")
+        if meta.get("runner_error"):
+            reasons.append(meta["runner_error"])
         lo, hi = meta.get("measure_start_wall_ms"), meta.get("measure_end_wall_ms")
         host, pressure_reasons = pressure_window(directory / "host.csv", lo, hi,
                                                  args.cpu_psi, args.memory_psi, args.sustained_seconds)

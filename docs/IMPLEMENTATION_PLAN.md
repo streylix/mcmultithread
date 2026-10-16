@@ -47,3 +47,13 @@ Pending: build reproducibility check; confirm the proposed longer calibration
 durations and repeat noise measurements on other days/times;
 first JMH run and analysis.
 These are pending, not completed security or reproducibility guarantees.
+
+Player scaling attempted 2026-10-15; see [SCALING_BASELINE.md](SCALING_BASELINE.md).
+The harness now shards clients, separates physical server/client cores, records
+generator/network/frequency telemetry and captures Folia phase profiles. One
+50-player repetition passed the declared validity rules (6.013 ms median,
+20.000 TPS); the next 100-player ramp triggered the host CPU PSI abort and no
+further loads ran. The earlier fifty-bot-shard diagnostic was generator-limited.
+The requested three-repetition curve, quadratic fits, capacity extrapolation
+and confirmation of 180/300 s durations remain incomplete. Additional generator
+capacity and a PSI-safe allocation are needed before resuming scaling.
